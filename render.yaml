@@ -2,7 +2,7 @@ services:
   - type: web
     name: bug-resolution-agent
     runtime: docker
-    plan: starter
+    plan: free
     region: ohio
     healthCheckPath: /health
     dockerfilePath: ./Dockerfile
@@ -14,7 +14,3 @@ services:
         generateValue: true
       - key: Runner__Enabled
         value: "false"
-    disk:
-      name: agent-data
-      mountPath: /data
-      sizeGB: 1
