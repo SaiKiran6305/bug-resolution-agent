@@ -57,7 +57,7 @@ Open the same URL and enter the local access key. The packaged application runs 
 
 ### Hosted UI
 
-For a persistent hosted demo, see [Deploy to Render](docs/deploy-render.md). It hosts the UI, API and bundled sample with durable investigation history. Hosted Docker test execution is disabled; run the app locally with Docker to use the four-stage verification workflow.
+For a free hosted preview, see [Deploy to Render](docs/deploy-render.md). It hosts the UI, API and bundled sample. History may reset when the free service sleeps or restarts, and hosted Docker test execution is disabled; run the app locally with Docker to use the four-stage verification workflow.
 
 ## Enable live investigations
 
