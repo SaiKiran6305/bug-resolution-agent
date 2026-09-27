@@ -1,0 +1,20 @@
+services:
+  agent:
+    build: .
+    ports: ["127.0.0.1:5080:8080"]
+    environment:
+      Agent__ApiKey: ${AGENT_API_KEY:?Run python3 scripts/setup.py first}
+      Model__ApiKey: ${MODEL_API_KEY:-}
+      Model__Name: ${MODEL_NAME:-}
+      GitHub__Token: ${GITHUB_TOKEN:-}
+      Runner__Enabled: "false"
+    volumes:
+      - agent-data:/data
+    # Local single-user deployment. Runner operates separately via the host setup.
+    read_only: true
+    tmpfs: ["/tmp", "/workspaces:uid=1654,gid=1654"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+volumes:
+  agent-data:

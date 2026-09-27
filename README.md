@@ -1,91 +1,118 @@
 # Bug Resolution Agent
 
-A planned developer assistant that investigates bug reports, proposes code changes and regression tests, and presents execution evidence for human review.
+A developer assistant that turns a bug report into a reviewable diagnosis, proposed patch, regression test and execution evidence.
 
-## Status
+**React + TypeScript · ASP.NET Core · SQLite · OpenAI Responses · Docker verification · GitHub**
 
-Project design and implementation roadmap. The application is not implemented yet.
+## What is implemented
 
-## Initial scope
+- Report intake with expected/actual behavior, reproduction steps and logs.
+- GitHub issue number/URL import for registered repositories.
+- One assistant with multiple operator-configured services.
+- Immutable source snapshots, exact code retrieval and cited evidence.
+- Live model proposals with a strict schema, plus a clearly labeled demo mode.
+- Validated source edits, a generated regression test and downloadable unified diff.
+- Optional Docker verification: baseline, failure before fix, success after fix and existing-suite checks.
+- Persistent investigations, background processing, review decisions and restart recovery.
+- Explicit draft PR creation for approved, verified, unchanged GitHub sources.
+- API access key, bounded requests/output, redaction and an isolated runner contract.
+- Responsive UI with history, evidence, patch and test-result views.
 
-One shared assistant, initially connected to one ASP.NET Core service. Additional services can be registered later.
+This is a working single-user starter application, not a claim of production readiness for arbitrary company repositories. Real services require the documented test adapter. Live model and GitHub operations require your credentials. See [architecture and limits](docs/architecture.md).
 
-### Inputs
-- Bug title, description, expected and actual behavior, and reproduction steps.
-- Optional redacted logs, stack trace, environment, timestamp, and trace ID.
-- Repository and exact commit under investigation.
-- Later: import a bug ID or issue URL through a configured tracker connection.
+## Quick start: full local workflow
 
-### Outputs
-- Likely cause and evidence with repository paths, line references, and commit.
-- Proposed patch and regression test.
-- Actual build and test results, including failure before and success after the fix where reproducible.
-- Uncertainty and incomplete verification clearly shown.
-- Later: developer-triggered draft pull request.
+Requirements: .NET 10 SDK, Node.js 22.12+ (or a supported newer LTS), Python 3, Git, and Docker for isolated verification. Linux and macOS are the documented host paths. Docker Desktop must be running on macOS. On Windows, use WSL2 with Docker integration.
 
-## Planned stack
+```bash
+git clone https://github.com/SaiKiran6305/bug-resolution-agent.git
+cd bug-resolution-agent
+python3 scripts/setup.py
+python3 scripts/build-web.py
+docker build -f runner/Dockerfile -t bug-agent-runner:local .
+```
 
-- React review interface.
-- ASP.NET Core API and background worker.
-- Model API behind a provider abstraction.
-- PostgreSQL for investigations, evidence, execution records, and feedback.
-- Repository text and symbol search for initial retrieval.
-- Optional pgvector for semantic search over historical fixes and runbooks.
-- Isolated execution runner with disposable test data.
+Edit `.env` locally and set `RUNNER_ENABLED=true`. Keep the generated `AGENT_API_KEY`. Model and GitHub credentials are optional for the sample.
 
-## Workflow
+```bash
+python3 scripts/run.py
+```
 
-1. Validate the report and select a registered repository at a pinned commit.
-2. Extract stack trace paths, symbols, exception types, and other clues.
-3. Retrieve relevant code, callers, and tests.
-4. Generate a structured diagnosis and proposed reproduction test.
-5. Run the reproduction against the original code and record its failure reason.
-6. Generate and validate a constrained patch.
-7. Run the same regression test after applying the patch and run existing tests.
-8. Present the diff, evidence, commands, exit codes, and limitations for developer review.
+Open **http://127.0.0.1:5080**. Enter the `AGENT_API_KEY` from your local `.env`, then select **Run sample investigation**. The demo uses a predefined patch, but retrieval, validation, persistence and enabled tests actually execute. The expected run has four execution records with exit codes **0, 1, 0, 0**, followed by developer review.
 
-The model proposes tests; the runner executes them. Passing a build alone does not establish resolution. A mock-based check is recorded separately from verification against a real dependency sandbox.
+The deliberately buggy sample returns a Pending order after successful payment. Its regression exercises a real local HTTP API. Payments are fake and the order store is in memory; no real money or production data is involved.
 
-## Service registration
+### Without Docker
 
-Each registered service needs a repository, permitted source paths, build and test commands, runtime dependencies, test data setup, and resource limits. Secrets are supplied outside version control. The backend controls permitted commands and actions.
+Leave `RUNNER_ENABLED=false`. You can inspect proposals, evidence and diffs. Verification is explicitly shown as **Runner not configured**; no test success is invented.
 
-## Architecture decisions
+### Packaged application
 
-- Use an explicit workflow first; multiple autonomous agents are not required.
-- RAG starts with relevant code retrieved by exact search.
-- A vector database is optional and added only after retrieval evaluation demonstrates value.
-- Investigations run asynchronously with persisted state and bounded retries.
-- Repository contents and issue text are untrusted evidence.
-- Test runners receive no production credentials or GitHub write tokens.
-- Draft PR creation is separate from model-directed execution.
-- Cross-service tracing, issue imports, and browser flow tests are later extensions.
+```bash
+python3 scripts/setup.py
+docker compose up --build
+```
 
-## Milestones
+Open the same URL and enter the local access key. The packaged application runs as a non-root user with durable SQLite storage. Compose does not mount a Docker socket and therefore leaves verification disabled. Use the host setup above to run the full isolated verification workflow.
 
-- [ ] Intake and service registration.
-- [ ] Code retrieval and diagnosis with evidence.
-- [ ] Patch and regression-test generation.
-- [ ] Isolated reproduction and verification.
-- [ ] Review UI, history, and feedback.
-- [ ] GitHub issue import and draft PR integration.
-- [ ] Multiple services and trace-based investigation.
-- [ ] Evaluate hybrid retrieval over resolved issues.
+## Enable live investigations
 
-## Evaluation
+Set `MODEL_API_KEY` and `MODEL_NAME` in `.env` to an OpenAI API key and a model that supports Responses structured outputs. Restart the server. Report/source context is sent to that provider; use only data you are authorized to share. Redaction covers common patterns, not every possible secret.
 
-Create 15–30 synthetic or public bugs with known expected behavior. Hold out a subset when tuning. Measure correct-file retrieval, clean patch application, reproduction success, failure-to-pass transitions, regressions, review acceptance, latency, and model cost. Keep hidden reference fixes out of retrieval.
+The model is selected explicitly so provider availability and cost remain your decision. Missing model credentials never fall back to the demo. The implementation uses one bounded proposal request; there are no unbounded autonomous loops.
 
-## Planned layout
+For your own service, follow [Register a service](docs/register-service.md). The default sample requires no registration. The UI accepts a pasted report or imports a GitHub issue; it does not accept arbitrary repository paths from users.
 
-- frontend/ — React investigation and review interface.
-- src/BugResolution.Api/ — intake, service configuration, and review endpoints.
-- src/BugResolution.Worker/ — retrieval and model workflow.
-- runner/ — isolated build and test execution.
-- samples/ — target service and synthetic bug reports.
-- tests/ — workflow and integration tests.
-- docs/ — architecture and service onboarding.
+For draft PRs, configure the service's GitHub repository and a fine-grained `GITHUB_TOKEN` with the documented permissions. Review and approve a verified live run, then explicitly choose **Create draft PR**. The source and remote base commit must still match. Nothing is merged or deployed automatically.
 
-## Initial demonstration
+## Development and tests
 
-A synthetic checkout API bug: successful payment leaves the order in an incorrect state. Reproduce it with an API integration test and test database; propose a patch; show failed-before, passed-after, and existing-suite results. Use simulated payment data and explicitly label the mock boundary.
+```bash
+dotnet build src/BugResolution.Api
+dotnet run --project tests/BugResolution.Tests
+npm ci --prefix frontend
+npm test --prefix frontend
+npm run build --prefix frontend
+python3 scripts/smoke.py
+```
+
+Full isolation check after building the runner image:
+
+```bash
+VERIFY_DOCKER=true python3 scripts/smoke.py
+```
+
+For UI hot reload, run the API on port 5080 and `npm run dev --prefix frontend` in another terminal. Vite proxies `/api` to the API. The access key is kept in browser memory only; refreshing requires entering it again.
+
+GitHub Actions builds both applications, runs the checks, executes the four-stage Docker workflow, builds the packaged image and checks that it starts. CI uses no live model or GitHub write credentials.
+
+## Layout
+
+| Path                         | Purpose                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| `frontend/`                  | React report, evidence, diff and review interface                        |
+| `src/BugResolution.Api/`     | API, SQLite store, worker, retrieval, providers and runner orchestration |
+| `runner/`                    | Restricted offline .NET verification image                               |
+| `samples/checkout/`          | Deliberately buggy API and integration-test adapter                      |
+| `tests/BugResolution.Tests/` | Policy, persistence and verification checks                              |
+| `scripts/`                   | Local setup, startup, builds and HTTP smoke tests                        |
+| `docs/`                      | Architecture, security boundaries and service onboarding                 |
+
+## API
+
+Authenticated routes require `X-Api-Key`.
+
+| Method   | Route                                   | Purpose                                           |
+| -------- | --------------------------------------- | ------------------------------------------------- |
+| GET      | `/health`                               | Process health                                    |
+| GET      | `/api/configuration`                    | Service list and feature availability; no secrets |
+| GET/POST | `/api/investigations`                   | List or enqueue a report                          |
+| GET      | `/api/investigations/{id}`              | Investigation evidence and state                  |
+| POST     | `/api/issues/import`                    | Import a GitHub issue into an editable report     |
+| POST     | `/api/investigations/{id}/review`       | Record Approved or Rejected                       |
+| GET      | `/api/investigations/{id}/patch`        | Download the proposed diff                        |
+| POST     | `/api/investigations/{id}/pull-request` | Create an eligible draft PR                       |
+
+## Next extensions
+
+Historical-issue RAG and pgvector, symbol-aware retrieval, cross-service trace investigation, browser flow tests, Jira import, independent hidden-test evaluation, OIDC/RBAC and a distributed job store are future extensions. The current application does not require a vector database.

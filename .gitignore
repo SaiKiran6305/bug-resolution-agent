@@ -1,0 +1,17 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/wwwroot/
+**/data/
+**/workspaces/
+**/*.db*
+**/*.tsbuildinfo
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+**/appsettings.Local.json
+.DS_Store
+*.log
+test-results/

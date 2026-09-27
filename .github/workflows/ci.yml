@@ -1,0 +1,42 @@
+name: Build and verify
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: python3 scripts/build-web.py
+      - run: npm test --prefix frontend
+      - run: dotnet build src/BugResolution.Api
+      - run: dotnet run --project tests/BugResolution.Tests
+      - run: python3 scripts/check-fixture.py
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npx playwright test
+        working-directory: frontend
+      - run: docker build -f runner/Dockerfile -t bug-agent-runner:local .
+      - run: python3 scripts/smoke.py
+        env:
+          VERIFY_DOCKER: "true"
+      - run: docker build -t bug-resolution-agent:ci .
+      - name: Verify packaged app starts as a non-root user
+        run: |
+          docker run -d --name agent-package -p 127.0.0.1:5090:8080 -e Agent__ApiKey=ci-test-access-key-not-a-production-secret bug-resolution-agent:ci
+          trap 'docker logs agent-package; docker rm -f agent-package' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5090/health; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5090/health
+          curl -fsS http://127.0.0.1:5090/ | grep 'Bug Resolution Agent'
