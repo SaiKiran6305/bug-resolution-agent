@@ -55,6 +55,10 @@ docker compose up --build
 
 Open the same URL and enter the local access key. The packaged application runs as a non-root user with durable SQLite storage. Compose does not mount a Docker socket and therefore leaves verification disabled. Use the host setup above to run the full isolated verification workflow.
 
+### Hosted UI
+
+For a persistent hosted demo, see [Deploy to Render](docs/deploy-render.md). It hosts the UI, API and bundled sample with durable investigation history. Hosted Docker test execution is disabled; run the app locally with Docker to use the four-stage verification workflow.
+
 ## Enable live investigations
 
 Set `MODEL_API_KEY` and `MODEL_NAME` in `.env` to an OpenAI API key and a model that supports Responses structured outputs. Restart the server. Report/source context is sent to that provider; use only data you are authorized to share. Redaction covers common patterns, not every possible secret.
